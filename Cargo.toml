@@ -1,0 +1,24 @@
+[package]
+name = "httpfromtcp"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name="main"
+path="src/main.rs"
+
+[[bin]]
+name="tcpsender"
+path="src/tcpsender/main.rs"
+
+[[bin]]
+name="udpsender"
+path="src/udpsender/main.rs"
+
+[[bin]]
+name="udpreceiver"
+path="src/udpreceiver/main.rs"
+
+[dependencies]
+
+
