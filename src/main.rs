@@ -1,7 +1,7 @@
 use std::net::{TcpListener, SocketAddr};
 use crate::utils::get_lines_channel;
 pub mod utils;
-
+mod internal;
 
 fn main() -> std::io::Result<()> {
     let address = SocketAddr::from(([127, 0, 0, 1], 8080));
