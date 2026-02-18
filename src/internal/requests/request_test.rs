@@ -1,13 +1,14 @@
-pub fn add_number(a: usize, b: usize) -> usize {
-    a +  b
-}
+
 
 #[cfg(test)]
 mod tests {
     use crate::internal::requests::request::request_from_reader;
 
-    use super::*;
     use std::io::Cursor;
+
+    pub fn add_number(a: usize, b: usize) -> usize {
+    a +  b
+}
 
     #[test]
     fn it_works() {

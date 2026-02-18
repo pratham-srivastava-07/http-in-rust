@@ -27,13 +27,6 @@ pub struct Request {
 
     let mut parts = first_line.split_whitespace();
 
-    let result = parse_request_line(parts)?;
-
-    Ok(result)
-
- }
-
-fn parse_request_line(mut parts: SplitWhitespace<'_>) -> Result<Request, io::Error> {
     let method = parts
     .next()
     .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "Method missing"))?
@@ -58,4 +51,5 @@ fn parse_request_line(mut parts: SplitWhitespace<'_>) -> Result<Request, io::Err
     let request = Request { request_line };
 
     Ok(request)
-} 
+
+ }
