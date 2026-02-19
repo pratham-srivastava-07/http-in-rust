@@ -7,9 +7,35 @@ pub struct RequestLine {
 }
 
 pub struct Request {
-    pub request_line: RequestLine
+    pub request_line: RequestLine,
+    state: ParseState
 }
 
+enum ParseState {
+    Initialized,
+    Done
+}
+
+
+impl Request {
+    fn parse(&mut self, data: &[u8]) -> Result<usize,io::Error> {
+        match self.state  {
+            ParseState::Initialized => {
+                let (request_line, bytes) = parse_request_line(&String::from_utf8_lossy(data))?;
+               if bytes == 0 {
+                    return Ok(0)
+               } else {
+                    self.request_line = request_line;
+                    self.state = ParseState::Done;
+                    return Ok(bytes);
+               }
+            },
+            ParseState::Done => {
+                return Ok(0);
+            }
+        }
+    }
+}
 
  pub fn request_from_reader(mut reader: impl Read) -> Result<Request, io::Error> {
     // first create a simple buffer
@@ -21,11 +47,33 @@ pub struct Request {
 
     let request_string = String::from_utf8_lossy(&buffer[..bytes_to_be_read]);
 
-    let first_line = request_string.lines().next()
-    .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "No input received"))
-    ?;
+    let (request_line, bytes_consumed) = parse_request_line(&request_string)?;
 
-    let mut parts = first_line.split_whitespace();
+    let request = Request { request_line, state: ParseState::Done };
+
+    Ok(request)
+ }
+
+fn parse_request_line(input: &str) -> Result<(RequestLine, usize), io::Error> {
+
+    let line_end = match input.find("\r\n") {  // "\r\n"
+        Some(index) => index,
+        None => {
+            return Ok((  
+                    RequestLine 
+                    {
+                        http_version: String::new(),
+                        request_target: String::new(), 
+                        method: String::new() 
+                    },
+                0,
+            ));
+        }
+    };
+
+    let request_line_string = &input[..line_end];
+
+    let mut parts = request_line_string.split_whitespace();
 
     let method = parts
     .next()
@@ -48,8 +96,8 @@ pub struct Request {
         method,
     };
 
-    let request = Request { request_line };
+    // let request = Request { request_line, state};
+    let bytes_consumed = line_end + 2; // for \r\n inclusive 
 
-    Ok(request)
-
- }
+    Ok((request_line, bytes_consumed))
+} 
