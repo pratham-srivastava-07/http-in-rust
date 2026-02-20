@@ -1,13 +1,13 @@
 use std::io::{self, Read};
 
-struct ChunkReader {
-    data: String,
-    num_bytes_per_read: usize,
-    pos: usize
+pub struct ChunkReader {
+    pub data: String,
+    pub num_bytes_per_read: usize,
+    pub pos: usize
 }
 
 impl ChunkReader {
-    fn new(data: String, num_bytes_per_read: usize) -> Self {
+    pub fn new(data: String, num_bytes_per_read: usize) -> Self {
         Self { data, num_bytes_per_read, pos: 0 }
     }
 }

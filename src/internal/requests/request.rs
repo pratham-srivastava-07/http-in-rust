@@ -1,5 +1,7 @@
 use std::{io::{self, Read}, str::SplitWhitespace};
 
+use crate::internal::requests::parse_stream::ChunkReader;
+
 pub struct RequestLine {
     http_version: String,
     request_target: String,
@@ -47,9 +49,33 @@ impl Request {
 
     let request_string = String::from_utf8_lossy(&buffer[..bytes_to_be_read]);
 
-    let (request_line, bytes_consumed) = parse_request_line(&request_string)?;
+    let mut request = Request {
+        request_line: RequestLine { http_version: String::new(), request_target: String::new(), method: String::new() },
+        state: ParseState::Initialized
+    };
 
-    let request = Request { request_line, state: ParseState::Done };
+    let mut chunk_reader = ChunkReader::new(request_string.to_string(), 5);
+
+    let mut read_into_buf: Vec<u8> = Vec::new();
+
+    loop {
+        let chunks = chunk_reader.read(&mut buffer)?;
+
+        if chunks == 0 {
+            break;
+        }
+
+        read_into_buf.extend_from_slice(&buffer[..chunks]);
+
+        let consumed = request.parse(&read_into_buf)?;
+
+        read_into_buf.drain(..consumed);
+
+        if matches!(request.state, ParseState::Done) {
+            break;
+        }
+
+    };
 
     Ok(request)
  }

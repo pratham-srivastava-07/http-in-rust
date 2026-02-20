@@ -7,8 +7,8 @@ mod tests {
     use std::io::Cursor;
 
     pub fn add_number(a: usize, b: usize) -> usize {
-    a +  b
-}
+        a +  b
+    }
 
     #[test]
     fn it_works() {
