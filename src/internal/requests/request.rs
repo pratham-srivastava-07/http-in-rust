@@ -1,18 +1,19 @@
-use std::{io::{self, Read}, str::SplitWhitespace};
+use std::{io::{self, Read}};
 
-use crate::internal::requests::parse_stream::ChunkReader;
-
+#[derive(Debug)]
 pub struct RequestLine {
     http_version: String,
     request_target: String,
     method: String
 }
 
+#[derive(Debug)]
 pub struct Request {
     pub request_line: RequestLine,
     state: ParseState
 }
 
+#[derive(Debug)]
 enum ParseState {
     Initialized,
     Done
@@ -24,6 +25,7 @@ impl Request {
         match self.state  {
             ParseState::Initialized => {
                 let (request_line, bytes) = parse_request_line(&String::from_utf8_lossy(data))?;
+                println!("{:?}, {}", request_line, bytes);
                if bytes == 0 {
                     return Ok(0)
                } else {
@@ -43,23 +45,18 @@ impl Request {
     // first create a simple buffer
     let mut buffer = [0; 1024];
 
-    // then read all bytes 
-    let bytes_to_be_read = reader.read(&mut buffer)?;
-    println!("{:?}", bytes_to_be_read);
-
-    let request_string = String::from_utf8_lossy(&buffer[..bytes_to_be_read]);
-
     let mut request = Request {
         request_line: RequestLine { http_version: String::new(), request_target: String::new(), method: String::new() },
         state: ParseState::Initialized
     };
 
-    let mut chunk_reader = ChunkReader::new(request_string.to_string(), 5);
+    // println!("{}", request.request_line);
 
     let mut read_into_buf: Vec<u8> = Vec::new();
 
     loop {
-        let chunks = chunk_reader.read(&mut buffer)?;
+        let chunks = reader.read(&mut buffer)?;  
+        println!("{}", chunks);
 
         if chunks == 0 {
             break;
@@ -122,8 +119,10 @@ fn parse_request_line(input: &str) -> Result<(RequestLine, usize), io::Error> {
         method,
     };
 
+    // println!("{}, {}, {}", http_version.clone(), method.clone(), request_target.clone());
+
     // let request = Request { request_line, state};
     let bytes_consumed = line_end + 2; // for \r\n inclusive 
 
     Ok((request_line, bytes_consumed))
-} 
+}
