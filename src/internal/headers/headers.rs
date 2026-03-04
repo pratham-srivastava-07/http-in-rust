@@ -1,8 +1,7 @@
-use std::{collections::HashMap, io::{self, Read}};
+use std::{collections::HashMap, io};
 
-#[derive(Debug)]
 pub struct Headers {
-    map: HashMap<String, String>
+    pub map: HashMap<String, String>
 }
 
 impl Headers {
@@ -15,32 +14,44 @@ impl Headers {
     }
 
     pub fn parse(&mut self, data: &[u8]) -> Result<(usize, bool), io::Error> {
-        let text = String::from_utf8_lossy(data);
+        let position = data.windows(2).position(|w| w==b"\r\n");
 
-        let mut bytes_consumed = 0;
+        let Some(crlf_pos) = position else {
+            return Ok((0, false));
+        };
 
-        for line in text.split("\r\n") {
-            bytes_consumed += line.len() + 2;
-
-            if line.is_empty() {
-                return Ok((bytes_consumed, false));
-            }
-
-             if line.starts_with(' ') {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "Invalid header format",
-                ));
-            }
-
-            let (key, value) = line
-                .split_once(": ")
-                .ok_or_else(|| {
-                    io::Error::new(io::ErrorKind::InvalidData, "Malformed header line")
-                })?;
-
-            self.map.insert(key.to_string(), value.to_string());
+        if crlf_pos == 0 {
+            return Ok((2, false));
         }
-        Ok((bytes_consumed, true))
+
+        let line = &data[..crlf_pos];
+        let line_str = std::str::from_utf8(line).map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Line not converted"))?;
+
+        if line_str.starts_with(' ') {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid spaces"));
+        }
+
+        let colon_pos = line_str.find(":").ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "colon missing"))?;
+
+        let key = &line_str[..colon_pos].to_lowercase();
+
+        // TODO: keep a check for invalid character chk and that it should have atleast 1 char
+
+        
+
+        if key.ends_with(' ') {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid spaces in key"));
+        }
+
+        let value = &line_str[colon_pos+1..];
+
+        // TODO for multiple headers with same key, keep a chk and then append values if it does exist
+        // if self.map.contains_key(key) {
+        //     self.map.insert(k, v)
+        // }
+
+        self.map.insert(key.to_string(), value.to_string());
+
+        Ok((colon_pos +2, true))
     }
 }
