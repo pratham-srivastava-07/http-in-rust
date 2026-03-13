@@ -20,7 +20,7 @@ impl Headers {
             return Ok((0, false));
         };
 
-        if crlf_pos == 0 {
+        if crlf_pos == 0 { 
             return Ok((2, false));
         }
 
@@ -33,25 +33,26 @@ impl Headers {
 
         let colon_pos = line_str.find(":").ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "colon missing"))?;
 
-        let key = &line_str[..colon_pos].to_lowercase();
+        let key = line_str[..colon_pos].to_lowercase();
 
-        // TODO: keep a check for invalid character chk and that it should have atleast 1 char
-
-        
+        if !crate::utils::is_valid_token(&key) {
+            return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid characters in key"));
+        }
 
         if key.ends_with(' ') {
             return Err(io::Error::new(io::ErrorKind::InvalidData, "Invalid spaces in key"));
         }
 
-        let value = &line_str[colon_pos+1..];
+        let value = line_str[colon_pos + 1..].trim().to_string();
 
-        // TODO for multiple headers with same key, keep a chk and then append values if it does exist
-        // if self.map.contains_key(key) {
-        //     self.map.insert(k, v)
-        // }
+        self.map
+            .entry(key)
+            .and_modify(|v| {
+                v.push_str(", ");
+                v.push_str(&value);
+            })
+            .or_insert(value);
 
-        self.map.insert(key.to_string(), value.to_string());
-
-        Ok((colon_pos +2, true))
+        Ok((crlf_pos + 2, true))
     }
 }

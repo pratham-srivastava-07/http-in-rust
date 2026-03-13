@@ -42,3 +42,17 @@ pub fn get_lines_channel(mut stream: TcpStream) -> std::io::Result<()> {
 
     Ok(())
 }
+
+pub fn is_valid_token(token: &str) -> bool {
+    if token.is_empty() {
+        return false;
+    }
+
+    token.chars().all(|c| {
+        c.is_ascii_alphanumeric()
+            || matches!(
+                c,
+                '!' | '#' | '$' | '%' | '&' | '\'' | '*' | '+' | '-' | '.' | '^' | '_' | '`' | '|' | '~'
+            )
+    })
+}
