@@ -1,5 +1,6 @@
 use std::{collections::HashMap, io};
 
+#[derive(Debug)]
 pub struct Headers {
     pub map: HashMap<String, String>
 }

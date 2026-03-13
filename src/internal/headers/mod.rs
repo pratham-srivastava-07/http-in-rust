@@ -1,2 +1,2 @@
-mod headers;
-mod headers_test;
+pub mod headers;
+pub mod headers_test;

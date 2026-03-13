@@ -1,4 +1,6 @@
-use std::{io::{self, Read}};
+use std::{io::{self, Read}, fmt};
+
+use crate::internal::headers::headers::Headers;
 
 #[derive(Debug)]
 pub struct RequestLine {
@@ -7,15 +9,40 @@ pub struct RequestLine {
     method: String
 }
 
+impl fmt::Display for RequestLine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Request line:\n- Method: {}\n- Target: {}\n- Version: {}",
+            self.method, self.request_target, self.http_version
+        )
+    }
+}
+
 #[derive(Debug)]
 pub struct Request {
     pub request_line: RequestLine,
+    pub headers: Headers,
     state: ParseState
+}
+
+impl fmt::Display for Request {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "{}", self.request_line)?;
+        writeln!(f, "Headers:")?;
+        for (key, value) in &self.headers.map {
+            // Capitalize the first letter of each part of the key for display purposes
+            // (e.g. user-agent -> User-Agent), or just display exactly as uppercase key 
+            writeln!(f, "- {}: {}", key.to_uppercase(), value)?;
+        }
+        Ok(())
+    }
 }
 
 #[derive(Debug)]
 enum ParseState {
     Initialized,
+    ParsingHeader,
     Done
 }
 
@@ -29,11 +56,22 @@ impl Request {
                if bytes == 0 {
                     return Ok(0)
                } else {
-                    self.request_line = request_line;
-                    self.state = ParseState::Done;
+                    self.request_line = request_line; 
+                    self.state = ParseState::ParsingHeader;
                     return Ok(bytes);
                }
             },
+            ParseState::ParsingHeader => {
+                let (pos, val) = self.headers.parse(data)?;
+                if val == true {
+                    return Ok(pos);
+                } else {
+                    if pos > 0 {
+                        self.state = ParseState::Done;
+                    }
+                    return Ok(pos);
+                }
+            }
             ParseState::Done => {
                 return Ok(0);
             }
@@ -47,6 +85,7 @@ impl Request {
 
     let mut request = Request {
         request_line: RequestLine { http_version: String::new(), request_target: String::new(), method: String::new() },
+        headers: Headers::new(),
         state: ParseState::Initialized
     };
 

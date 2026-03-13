@@ -12,7 +12,8 @@ fn main() -> std::io::Result<()> {
         let stream = stream?;
         println!("connection accepted");
         // get_lines_channel(stream)?;
-        request_from_reader(stream)?;
+        let request = request_from_reader(stream)?;
+        println!("{}", request);
         println!("connection closed");
     } 
 
