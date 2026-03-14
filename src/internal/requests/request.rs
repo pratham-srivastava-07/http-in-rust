@@ -34,7 +34,7 @@ impl fmt::Display for Request {
         for (key, value) in &self.headers.map {
             writeln!(f, "- {}: {}", key.to_uppercase(), value)?;
         }
-        let _ = writeln!(f, "Body: {:?}", std::str::from_utf8(&self.body));
+        let _ = writeln!(f, "Body: {:?}", std::str::from_utf8(&self.body).unwrap());
         Ok(())
     }
 }
