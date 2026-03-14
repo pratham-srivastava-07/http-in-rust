@@ -11,6 +11,7 @@ impl Headers {
     }
 
     pub fn get(&self, key: &str) -> Option<&String> {
+        let key = &key.to_lowercase();
         self.map.get(key)
     }
 

@@ -23,6 +23,7 @@ impl fmt::Display for RequestLine {
 pub struct Request {
     pub request_line: RequestLine,
     pub headers: Headers,
+    pub body: Vec<u8>,
     state: ParseState
 }
 
@@ -31,10 +32,9 @@ impl fmt::Display for Request {
         writeln!(f, "{}", self.request_line)?;
         writeln!(f, "Headers:")?;
         for (key, value) in &self.headers.map {
-            // Capitalize the first letter of each part of the key for display purposes
-            // (e.g. user-agent -> User-Agent), or just display exactly as uppercase key 
             writeln!(f, "- {}: {}", key.to_uppercase(), value)?;
         }
+        let _ = writeln!(f, "Body: {:?}", std::str::from_utf8(&self.body));
         Ok(())
     }
 }
@@ -43,6 +43,7 @@ impl fmt::Display for Request {
 enum ParseState {
     Initialized,
     ParsingHeader,
+    ParsingBody,
     Done
 }
 
@@ -67,11 +68,32 @@ impl Request {
                     return Ok(pos);
                 } else {
                     if pos > 0 {
-                        self.state = ParseState::Done;
+                        self.state = ParseState::ParsingBody;
                     }
                     return Ok(pos);
                 }
-            }
+            },
+            ParseState::ParsingBody => {
+                let content_length_str = match self.headers.get("content-length") {
+                    Some(len) => len,
+                    None => {
+                        self.state = ParseState::Done;
+                        return Ok(0)
+                    }
+                };
+
+                let content_length = content_length_str.trim().parse().map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid Content-Length"))?;
+
+                self.body.extend_from_slice(data);
+
+                if self.body.len() > content_length {
+                    return Err(io::Error::new(io::ErrorKind::InvalidData, "Body longer than Content-Length"));
+                } else if self.body.len() == content_length {
+                    self.state = ParseState::Done;
+                }
+
+                Ok(data.len())
+            },
             ParseState::Done => {
                 return Ok(0);
             }
@@ -86,6 +108,7 @@ impl Request {
     let mut request = Request {
         request_line: RequestLine { http_version: String::new(), request_target: String::new(), method: String::new() },
         headers: Headers::new(),
+        body: Vec::new(),
         state: ParseState::Initialized
     };
 
@@ -103,9 +126,16 @@ impl Request {
 
         read_into_buf.extend_from_slice(&buffer[..chunks]);
 
-        let consumed = request.parse(&read_into_buf)?;
-
-        read_into_buf.drain(..consumed);
+        loop {
+            let consumed = request.parse(&read_into_buf)?;
+            if consumed == 0 {
+                break;
+            }
+            read_into_buf.drain(..consumed);
+            if matches!(request.state, ParseState::Done) {
+                break;
+            }
+        }
 
         if matches!(request.state, ParseState::Done) {
             break;
